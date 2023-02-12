@@ -14,7 +14,7 @@ from pyasm.search.sql import Insert, Update, DbResource
 from pprint import pprint
 from src.pyasm.search import DbContainer
 
-TOKEN = "2120442827:AAFS8L5w82bjoGI3k8YSTvcdcEW8-MiGuEY"
+TOKEN = "TELEGRAM_TOKEN"
 
 DEFAULT_PROJECT = 'dolly3d'
 EPISODES = 'complex/scenes'
