@@ -1,0 +1,129 @@
+###########################################################
+#
+# Copyright (c) 2011, Southpaw Technology
+#                     All Rights Reserved
+#
+# PROPRIETARY INFORMATION.  This software is proprietary to
+# Southpaw Technology, and is not to be reproduced, transmitted,
+# or disclosed in any way without written permission.
+#
+#
+#
+
+
+import tacticenv
+
+from pyasm.common import Environment, Xml, Config, Common
+from pyasm.search import DatabaseImpl
+
+from tactic.command import PluginCreator, PluginInstaller
+
+import os, sys
+
+
+class FakeSecurity(object):
+    def check_access(self, *args):
+        return True
+    def get_user_name(self):
+        return "admin"
+    def get_login(self):
+        return self
+    def alter_search(self, search):
+        pass
+    def get_ticket(self):
+        from pyasm.search import SearchType
+        ticket = SearchType.create("sthpw/ticket")
+        return ticket
+    def get_ticket_key(self):
+        return ""
+
+
+def import_bootstrap():
+    print("Importing bootstrap ...")
+    vendor = "PostgreSQL"
+
+    plugin_dir = Environment.get_plugin_dir()
+    sys.path.insert(0, plugin_dir)
+
+    impl = DatabaseImpl.get(vendor)
+    impl.create_database("sthpw")
+
+
+    upgrade_dir = Environment.get_upgrade_dir()
+
+    for category in ['bootstrap', 'sthpw', 'config']:
+        f = open("%s/%s/%s_schema.sql" % (upgrade_dir, vendor.lower(), category) )
+        data = f.read()
+        f.close()
+
+        data = data.split(";")
+
+        cmds = []
+        for cmd in data:
+            lines = cmd.split("\n")
+            lines2 = []
+            for line in lines:
+                if line.startswith("--"):
+                    continue
+                lines2.append(line)
+            cmd = "\n".join(lines2)
+
+            cmd = cmd.strip()
+            if cmd == '':
+                continue
+            cmds.append(cmd)
+
+        from pyasm.search import DbContainer, DbResource
+        sql = DbContainer.get("sthpw")
+        for cmd in cmds:
+            sql.do_update(cmd)
+
+
+# NOTE: this requires plugins and is likely not necessary for initial load
+# of schema
+def import_schema(plugin_code):
+    from pyasm.search import Transaction
+    transaction = Transaction.get(create=True)
+
+    install_dir = Environment.get_install_dir()
+    base_dir = Environment.get_plugin_dir()
+    template_dir = "%s/%s" % (base_dir, plugin_code)
+    manifest_path = "%s/manifest.xml" % (template_dir)
+    print("Reading manifest: ", manifest_path)
+
+    xml = Xml()
+    xml.read_file(manifest_path)
+
+    # create a new project
+    installer = PluginInstaller(base_dir=base_dir, manifest=xml.to_string() )
+    installer.execute()
+
+
+def upgrade():
+    print("Running upgrade on 'sthpw' database")
+
+    install_dir = Environment.get_install_dir()
+    
+    python = Common.get_python()
+
+    cmd = "%s %s/src/bin/upgrade_db.py -q -f -y -p sthpw" % (python, install_dir)
+    print(cmd)
+
+    os.system(cmd)
+
+
+
+
+
+if __name__ == '__main__':
+
+    Environment.set_security(FakeSecurity())
+    import_bootstrap()
+    #import_schema("sthpw_schema")
+    #import_schema("config_schema")
+
+    # upgrade the database using the upgrade script
+    upgrade()
+
+
+
