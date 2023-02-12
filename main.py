@@ -12,7 +12,7 @@ from pyasm.security import Batch
 from pyasm.search import Search
 from pyasm.search.sql import Insert, Update, DbResource
 from pprint import pprint
-from src.pyasm.search import DbContainer
+from pyasm.search import DbContainer
 
 TOKEN = "TELEGRAM_TOKEN"
 
